@@ -1,7 +1,7 @@
 import { Box, useApp, Text } from 'ink';
-import { TextInput } from '@inkjs/ui';
 import React, { useState } from 'react';
 import { useRuntime } from '@/context/RuntimeContext.js';
+import { HistoryInput } from '@/HistoryInput.js';
 
 export type ReplProps = Record<string, never>;
 
@@ -17,7 +17,6 @@ export const Repl: React.FC<ReplProps> = () => {
 	const { exit } = useApp();
 	const runtime = useRuntime();
 	const [message, setMessage] = useState<string | null>(null);
-	const [resetCounter, setResetCounter] = useState(0);
 
 	const handleSubmit = async (value: string) => {
 		const trimmed = value.trim();
@@ -36,14 +35,12 @@ export const Repl: React.FC<ReplProps> = () => {
 			const schema = detectSchema(trimmed);
 			if (!schema) {
 				setMessage('Could not detect schema from query');
-				setResetCounter((c) => c + 1);
 				return;
 			}
 
 			const executor = runtime.executors.get(schema);
 			if (!executor) {
 				setMessage(`No executor for schema: ${schema}`);
-				setResetCounter((c) => c + 1);
 				return;
 			}
 
@@ -53,14 +50,13 @@ export const Repl: React.FC<ReplProps> = () => {
 		} catch (error) {
 			setMessage(`Error: ${error instanceof Error ? error.message : String(error)}`);
 		}
-		setResetCounter((c) => c + 1);
 	};
 
 	return (
 		<Box flexDirection="column" padding={1}>
 			<Box>
 				<Text color="gray">&gt; </Text>
-				<TextInput key={resetCounter} onSubmit={handleSubmit} />
+				<HistoryInput onSubmit={handleSubmit} />
 			</Box>
 			{message && (
 				<Box marginTop={1}>

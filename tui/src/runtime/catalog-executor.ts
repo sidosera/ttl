@@ -14,6 +14,8 @@ export class CatalogExecutor implements Executor {
 	}
 
 	private initSchema(): void {
+		this.conn.exec('CREATE SCHEMA IF NOT EXISTS catalog');
+
 		this.conn.exec(`
 			CREATE TABLE catalog.pane (
 				id TEXT PRIMARY KEY,
@@ -30,6 +32,18 @@ export class CatalogExecutor implements Executor {
 			CREATE TABLE catalog.runtime (
 				key TEXT PRIMARY KEY,
 				value TEXT NOT NULL
+			)
+		`);
+
+		this.conn.exec(`
+			CREATE SEQUENCE catalog.history_seq START 1
+		`);
+
+		this.conn.exec(`
+			CREATE TABLE catalog.history (
+				id INTEGER PRIMARY KEY DEFAULT nextval('catalog.history_seq'),
+				command TEXT NOT NULL,
+				timestamp BIGINT NOT NULL
 			)
 		`);
 
