@@ -18,9 +18,8 @@ Sample<T> uniformSample(std::span<const T> values, int64_t timestamp_us) {
 }
 
 template <typename T>
-  requires std::is_arithmetic_v<T>
-Sample<T> weightedReservoirSample(std::span<const T> values,
-                                   int64_t timestamp_us) {
+requires std::is_arithmetic_v<T> Sample<T> weightedReservoirSample(
+    std::span<const T> values, int64_t timestamp_us) {
   static thread_local std::mt19937 rng{std::random_device{}()};
 
   constexpr size_t kReservoirSize = 256;
@@ -50,8 +49,8 @@ Sample<T> weightedReservoirSample(std::span<const T> values,
 }
 
 template <typename T>
-  requires std::is_arithmetic_v<T>
-Sample<T> p99Sample(std::span<const T> values, int64_t timestamp_us) {
+requires std::is_arithmetic_v<T> Sample<T> p99Sample(std::span<const T> values,
+                                                     int64_t timestamp_us) {
   std::vector<T> sorted(values.begin(), values.end());
   std::sort(sorted.begin(), sorted.end());
   size_t p99_idx = static_cast<size_t>(sorted.size() * 0.99);
@@ -62,8 +61,8 @@ Sample<T> p99Sample(std::span<const T> values, int64_t timestamp_us) {
 }
 
 template <typename T>
-  requires std::is_arithmetic_v<T>
-Sample<T> avgSample(std::span<const T> values, int64_t timestamp_us) {
+requires std::is_arithmetic_v<T> Sample<T> avgSample(std::span<const T> values,
+                                                     int64_t timestamp_us) {
   double sum = 0.0;
   for (const auto& v : values) {
     sum += static_cast<double>(v);
@@ -75,8 +74,8 @@ Sample<T> avgSample(std::span<const T> values, int64_t timestamp_us) {
 }
 
 template <typename T>
-  requires std::is_arithmetic_v<T>
-Sample<T> minSample(std::span<const T> values, int64_t timestamp_us) {
+requires std::is_arithmetic_v<T> Sample<T> minSample(std::span<const T> values,
+                                                     int64_t timestamp_us) {
   T min_val = *std::min_element(values.begin(), values.end());
   return {.value = min_val,
           .timestamp_us = timestamp_us,
@@ -84,8 +83,8 @@ Sample<T> minSample(std::span<const T> values, int64_t timestamp_us) {
 }
 
 template <typename T>
-  requires std::is_arithmetic_v<T>
-Sample<T> maxSample(std::span<const T> values, int64_t timestamp_us) {
+requires std::is_arithmetic_v<T> Sample<T> maxSample(std::span<const T> values,
+                                                     int64_t timestamp_us) {
   T max_val = *std::max_element(values.begin(), values.end());
   return {.value = max_val,
           .timestamp_us = timestamp_us,

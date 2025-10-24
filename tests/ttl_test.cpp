@@ -170,9 +170,12 @@ TEST(TtlTest, MultipleCounters) {
   int cpu_load_count = 0;
 
   for (const auto& event : events) {
-    if (event.name == "socket.write_latency") write_latency_count++;
-    if (event.name == "socket.tick.count") tick_count_count++;
-    if (event.name == "cpu.load") cpu_load_count++;
+    if (event.name == "socket.write_latency")
+      write_latency_count++;
+    if (event.name == "socket.tick.count")
+      tick_count_count++;
+    if (event.name == "cpu.load")
+      cpu_load_count++;
   }
 
   EXPECT_GE(write_latency_count, 1);

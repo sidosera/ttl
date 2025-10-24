@@ -1,7 +1,7 @@
+#include "sampler.hpp"
 #include <gtest/gtest.h>
 #include <chrono>
 #include <vector>
-#include "sampler.hpp"
 #include "sampling_strategies.hpp"
 
 using namespace bits::ttl;
@@ -121,7 +121,7 @@ TEST(SamplerTest, MultipleCapturesResetBuffer) {
 
 TEST(SamplerTest, CustomSamplingStrategy) {
   auto custom_strategy = [](std::span<const double> values,
-                             int64_t timestamp_us) -> Sample<double> {
+                            int64_t timestamp_us) -> Sample<double> {
     double sum = 0.0;
     for (const auto& v : values) {
       sum += v;
