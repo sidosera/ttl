@@ -12,7 +12,7 @@ class FileSink : public Sink {
   FileSink(const FileSink&) = delete;
   FileSink& operator=(const FileSink&) = delete;
 
-  void publish(const Event& event) override;
+  void publish(Event&& event) override;
 
  private:
   int fd_;

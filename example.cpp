@@ -4,30 +4,19 @@
 #include <iostream>
 #include <string_view>
 #include <thread>
-#include "factory.hpp"
-#include "file_sink.hpp"
+#include "ttl.hpp"
+#include "counter.hpp"
 
 using namespace bits::ttl;
 
 int main() {
-	FileSink sink("/tmp/ttl_example.log");
+	Ttl::init("file:///tmp/ttl_example.log");
 
-	Tag tags[] = {{"host", "localhost"}};
-	TtlConfig config{.sink = sink, .tags = {}, .tag_count = 1};
-	config.tags[0] = tags[0];
-
-	auto factory = TtlFactory{config};
-
-  auto& latency_p99 =
-      factory.measure("demo.latency");
-
-  auto& throughput = factory.measure("demo.throughput");
-
-  auto& cpu_usage = factory.measure("demo.cpu.usage");
-
-  auto& queue_depth = factory.measure("demo.queue.depth");
-
-  auto& error_rate = factory.measure("demo.error.rate");
+  Counter latency_p99("demo.latency");
+  Counter throughput("demo.throughput");
+  Counter cpu_usage("demo.cpu.usage");
+  Counter queue_depth("demo.queue.depth");
+  Counter error_rate("demo.error.rate");
 
 	std::cout << "Generating metrics to /tmp/ttl_example.log (Ctrl+C to stop)..."
 						<< std::endl;
@@ -37,7 +26,7 @@ int main() {
       85.0, 90.0, 95.0, 110.0, 130.0, 150.0, 110.0, 95.0, 90.0, 85.0, 80.0, 75.0};
 
   for (int i = 0;; ++i) {
-    const double seconds = static_cast<double>(i) * 0.1;
+    const double seconds = static_cast<double>(i) * 0.001;
 
     const double coarse_latency =
         latency_pattern[static_cast<size_t>(i) % latency_pattern.size()];
@@ -58,8 +47,9 @@ int main() {
     const double error = std::max(0.0, std::min(1.0, 0.01 + 0.008 * std::sin(seconds * 1.2 + two_pi / 4.0)));
     error_rate += error;
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
+	Ttl::shutdown();
 	return 0;
 }

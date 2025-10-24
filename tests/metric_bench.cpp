@@ -2,13 +2,10 @@
 #include <algorithm>
 #include <cmath>
 
-#include "factory.hpp"
+#include "counter.hpp"
+#include "ttl.hpp"
 
 using namespace bits::ttl;
-
-struct NoopSink : public Sink {
-  void publish(const Event&) override {}
-};
 
 template <int PctNum, int PctDen = 100>
 static double PercentileFn(const std::vector<double>& v) {
@@ -29,20 +26,21 @@ static double PercentileFn(const std::vector<double>& v) {
 }
 
 static void BM_MetricRecord(benchmark::State& state) {
-  NoopSink sink;
+  if (state.thread_index() == 0) {
+    Ttl::init("noop://");
+  }
 
-  Tag tags[] = {{"host", "localhost"}};
-  TtlConfig config{.sink = sink, .tags = {}, .tag_count = 1};
-  config.tags[0] = tags[0];
-
-  auto factory = TtlFactory{config};
-  auto& m = factory.measure("bench.latency");
+  Counter c("bench.latency");
 
   double value = 100.0;
   for (auto _ : state) {
-    m += value;
+    c += value;
     value += 0.1;
     benchmark::DoNotOptimize(value);
+  }
+
+  if (state.thread_index() == 0) {
+    Ttl::shutdown();
   }
 }
 

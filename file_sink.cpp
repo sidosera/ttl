@@ -1,12 +1,12 @@
 #include "file_sink.hpp"
+#include <fcntl.h>
+#include <unistd.h>
 #include <cerrno>
+#include <charconv>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <charconv>
 #include <string>
-#include <fcntl.h>
-#include <unistd.h>
 
 namespace bits::ttl {
 
@@ -14,7 +14,8 @@ FileSink::FileSink(std::string_view path) : fd_(-1) {
   std::string path_str(path);
   fd_ = open(path_str.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0644);
   if (fd_ < 0) {
-    fprintf(stderr, "ttl: failed to open %s: %s\n", path_str.c_str(), strerror(errno));
+    fprintf(stderr, "ttl: failed to open %s: %s\n", path_str.c_str(),
+            strerror(errno));
     abort();
   }
 }
@@ -25,7 +26,7 @@ FileSink::~FileSink() {
   }
 }
 
-void FileSink::publish(const Event& event) {
+void FileSink::publish(Event&& event) {
   if (fd_ < 0) {
     return;
   }
@@ -35,7 +36,8 @@ void FileSink::publish(const Event& event) {
   char* end = buf + sizeof(buf) - 1;
 
   auto append = [&](const char* s) {
-    while (*s && p < end) *p++ = *s++;
+    while (*s && p < end)
+      *p++ = *s++;
   };
 
   auto append_sv = [&](std::string_view sv) {
@@ -46,12 +48,14 @@ void FileSink::publish(const Event& event) {
 
   auto append_int = [&](int64_t val) {
     auto [ptr, ec] = std::to_chars(p, end, val);
-    if (ec == std::errc()) p = ptr;
+    if (ec == std::errc())
+      p = ptr;
   };
 
   auto append_double = [&](double val) {
     auto [ptr, ec] = std::to_chars(p, end, val);
-    if (ec == std::errc()) p = ptr;
+    if (ec == std::errc())
+      p = ptr;
   };
 
   append("{\"name\":\"");
@@ -59,7 +63,7 @@ void FileSink::publish(const Event& event) {
   append("\",\"ts\":");
   append_int(event.timestamp);
 
-  for (size_t i = 0; i < event.tag_count; ++i) {
+  for (size_t i = 0; i < event.tags.size(); ++i) {
     append(",\"tag_");
     append_sv(event.tags[i].key);
     append("\":\"");
@@ -67,7 +71,7 @@ void FileSink::publish(const Event& event) {
     append("\"");
   }
 
-  for (size_t i = 0; i < event.field_count; ++i) {
+  for (size_t i = 0; i < event.fields.size(); ++i) {
     append(",\"");
     append_sv(event.fields[i].key);
     append("\":");
@@ -85,32 +89,6 @@ void FileSink::publish(const Event& event) {
           }
         },
         event.fields[i].value);
-  }
-
-  if (event.histogram && event.histogram->scale != HistScale::None) {
-    const auto& h = *event.histogram;
-    append(",\"scale\":\"");
-    append(h.scale == HistScale::Linear ? "linear" : "log");
-    append("\",\"bins\":");
-    append_int(h.bins);
-    append(",\"start\":");
-    append_double(h.start);
-    if (h.scale == HistScale::Linear) {
-      append(",\"step\":");
-      append_double(h.step);
-    } else {
-      append(",\"factor\":");
-      append_double(h.factor);
-    }
-    append(",\"underflow\":");
-    append_int(h.underflow);
-    append(",\"counts\":[");
-    for (uint16_t i = 0; i < h.bins; ++i) {
-      if (i > 0) append(",");
-      append_int(h.counts[i]);
-    }
-    append("],\"overflow\":");
-    append_int(h.overflow);
   }
 
   append("}\n");
