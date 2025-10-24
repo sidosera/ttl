@@ -39,3 +39,14 @@
 
 # debug information files
 *.dwo
+
+# Node.js artifacts
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tsbuildinfo
+package-lock.json
+
+# Build output (centralized in /dist)
+dist/
