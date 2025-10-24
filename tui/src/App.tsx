@@ -2,12 +2,14 @@ import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';
 import { Repl } from '@/Repl.js';
 import { RuntimeProvider } from '@/context/RuntimeContext.js';
+import { CatalogExecutor } from '@/runtime/catalog-executor.js';
 
 export type AppProps = Record<string, never>;
 
 export const App: React.FC<AppProps> = () => {
 	const runtime = useMemo(() => {
 		const executors = new Map();
+		executors.set('catalog', new CatalogExecutor());
 		return { executors };
 	}, []);
 
