@@ -1,13 +1,13 @@
 import { Box, useApp, Text } from 'ink';
-import TextInput from 'ink-text-input';
+import { TextInput } from '@inkjs/ui';
 import React, { useState } from 'react';
 
 export type ReplProps = Record<string, never>;
 
 export const Repl: React.FC<ReplProps> = () => {
 	const { exit } = useApp();
-	const [input, setInput] = useState('');
 	const [message, setMessage] = useState<string | null>(null);
+	const [resetCounter, setResetCounter] = useState(0);
 
 	const handleSubmit = (value: string) => {
 		const trimmed = value.trim();
@@ -22,22 +22,18 @@ export const Repl: React.FC<ReplProps> = () => {
 			return;
 		}
 
-		setInput('');
-
-		if (trimmed.length != 0) {
-			setMessage(`Unknown command: ${trimmed}`);
-		}
-
+		setMessage(`Unknown command: ${trimmed}`);
+		setResetCounter((c) => c + 1);
 	};
 
 	return (
 		<Box flexDirection="column" padding={1}>
 			<Box>
 				<Text color="gray">&gt; </Text>
-				<TextInput value={input} onChange={setInput} onSubmit={handleSubmit} />
+				<TextInput key={resetCounter} onSubmit={handleSubmit} />
 			</Box>
 			{message && (
-				<Box marginBottom={1}>
+				<Box marginTop={1}>
 					<Text color="yellow">{message}</Text>
 				</Box>
 			)}
