@@ -48,6 +48,13 @@ export class CatalogExecutor implements Executor {
 		`);
 
 		this.conn.exec(`
+			CREATE TABLE catalog.macro (
+				name TEXT PRIMARY KEY,
+				query TEXT NOT NULL
+			)
+		`);
+
+		this.conn.exec(`
 			INSERT INTO catalog.pane (id, parent_id, type)
 			VALUES ('root', NULL, 'container')
 		`);
@@ -55,6 +62,16 @@ export class CatalogExecutor implements Executor {
 		this.conn.exec(`
 			INSERT INTO catalog.runtime (key, value)
 			VALUES ('focused_pane', 'root')
+		`);
+
+		this.conn.exec(`
+			INSERT INTO catalog.runtime (key, value) VALUES ('last_pane_id', '')
+		`);
+
+		this.conn.exec(`
+			INSERT INTO catalog.macro (name, query) VALUES
+			('sv', 'INSERT INTO catalog://pane (id, parent_id, type, direction) SELECT ''pane_'' || CAST(epoch_ms(now()) AS VARCHAR), (SELECT value FROM catalog://runtime WHERE key = ''focused_pane''), ''leaf'', ''vertical''; UPDATE catalog://runtime SET value = (SELECT id FROM catalog://pane WHERE id LIKE ''pane_%'' ORDER BY id DESC LIMIT 1) WHERE key = ''last_pane_id''; UPDATE catalog://runtime SET value = (SELECT value FROM catalog://runtime WHERE key = ''last_pane_id'') WHERE key = ''focused_pane'''),
+			('sh', 'INSERT INTO catalog://pane (id, parent_id, type, direction) SELECT ''pane_'' || CAST(epoch_ms(now()) AS VARCHAR), (SELECT value FROM catalog://runtime WHERE key = ''focused_pane''), ''leaf'', ''horizontal''; UPDATE catalog://runtime SET value = (SELECT id FROM catalog://pane WHERE id LIKE ''pane_%'' ORDER BY id DESC LIMIT 1) WHERE key = ''last_pane_id''; UPDATE catalog://runtime SET value = (SELECT value FROM catalog://runtime WHERE key = ''last_pane_id'') WHERE key = ''focused_pane''')
 		`);
 	}
 

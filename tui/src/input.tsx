@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Text, useInput } from 'ink';
-import { useHistory } from '@/hooks/useHistory.js';
+import { useHistory } from '@/hooks/use_history.js';
 
 type HistoryInputProps = {
 	onSubmit: (value: string) => void;
 };
 
-export const HistoryInput: React.FC<HistoryInputProps> = ({ onSubmit }) => {
+export const Input: React.FC<HistoryInputProps> = ({ onSubmit }) => {
 	const [input, setInput] = useState('');
 	const [cursorPosition, setCursorPosition] = useState(0);
 	const { addToHistory, navigateHistory } = useHistory();

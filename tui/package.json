@@ -12,7 +12,9 @@
     "postbuild": "chmod +x dist/cli.mjs",
     "typecheck": "tsc --noEmit",
     "dev": "tsx src/cli.tsx",
-    "start": "node dist/cli.mjs"
+    "start": "node dist/cli.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@inkjs/ui": "^2.0.0",
@@ -35,7 +37,9 @@
     "@types/node": "^20.11.30",
     "@types/react": "^18.3.2",
     "esbuild": "^0.25.11",
+    "ink-testing-library": "^4.0.0",
     "tsx": "^4.7.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^4.0.3"
   }
 }
