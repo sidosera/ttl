@@ -6,11 +6,65 @@ export class CatalogExecutor implements Executor {
 	readonly schema = 'catalog';
 	private db: duckdb.Database;
 	private conn: duckdb.Connection;
+	private listeners: Set<() => void> = new Set();
 
 	constructor() {
 		this.db = new duckdb.Database(':memory:');
 		this.conn = this.db.connect();
 		this.initSchema();
+	}
+
+	onDataChanged(callback: () => void): () => void {
+		this.listeners.add(callback);
+		return () => {
+			this.listeners.delete(callback);
+		};
+	}
+
+	private async computeHash(): Promise<bigint> {
+		const tablesResult = await new Promise<DataFrame>((resolve, reject) => {
+			this.conn.all("SELECT table_name FROM information_schema.tables WHERE table_schema = 'catalog' ORDER BY table_name", (err, rows) => {
+				if (err) {
+					reject(err);
+					return;
+				}
+				resolve({
+					rows: rows || [],
+					columns: rows && rows.length > 0 ? Object.keys(rows[0]) : [],
+				});
+			});
+		});
+
+		if (tablesResult.rows.length === 0) {
+			return BigInt(0);
+		}
+
+		const subqueries = tablesResult.rows.map((row: any, idx: number) => {
+			const tableName = row.table_name;
+			return `
+				SELECT ${idx + 1} as tbl_idx, hash(string_agg(row_hash::VARCHAR, ',')) as h
+				FROM (SELECT hash('${tableName}', COLUMNS(*)) as row_hash FROM catalog.${tableName})
+			`;
+		}).join(' UNION ALL ');
+
+		const hashResult = await new Promise<DataFrame>((resolve, reject) => {
+			this.conn.all(`
+				SELECT SUM(h * power(31, tbl_idx)) % 1000000007 as poly_hash
+				FROM (${subqueries})
+			`, (err, rows) => {
+				if (err) {
+					reject(err);
+					return;
+				}
+				resolve({
+					rows: rows || [],
+					columns: rows && rows.length > 0 ? Object.keys(rows[0]) : [],
+				});
+			});
+		});
+
+		const hashValue = hashResult.rows[0].poly_hash;
+		return hashValue != null ? BigInt(hashValue) : BigInt(0);
 	}
 
 	private initSchema(): void {
@@ -70,12 +124,14 @@ export class CatalogExecutor implements Executor {
 
 		this.conn.exec(`
 			INSERT INTO catalog.macro (name, query) VALUES
-			('sv', 'INSERT INTO catalog://pane (id, parent_id, type, direction) SELECT ''pane_'' || CAST(epoch_ms(now()) AS VARCHAR), (SELECT value FROM catalog://runtime WHERE key = ''focused_pane''), ''leaf'', ''vertical''; UPDATE catalog://runtime SET value = (SELECT id FROM catalog://pane WHERE id LIKE ''pane_%'' ORDER BY id DESC LIMIT 1) WHERE key = ''last_pane_id''; UPDATE catalog://runtime SET value = (SELECT value FROM catalog://runtime WHERE key = ''last_pane_id'') WHERE key = ''focused_pane'''),
-			('sh', 'INSERT INTO catalog://pane (id, parent_id, type, direction) SELECT ''pane_'' || CAST(epoch_ms(now()) AS VARCHAR), (SELECT value FROM catalog://runtime WHERE key = ''focused_pane''), ''leaf'', ''horizontal''; UPDATE catalog://runtime SET value = (SELECT id FROM catalog://pane WHERE id LIKE ''pane_%'' ORDER BY id DESC LIMIT 1) WHERE key = ''last_pane_id''; UPDATE catalog://runtime SET value = (SELECT value FROM catalog://runtime WHERE key = ''last_pane_id'') WHERE key = ''focused_pane''')
+			('sv', 'INSERT INTO catalog://pane (id, parent_id, type, direction) VALUES (''pane_1_'' || CAST(epoch_ms(now()) AS VARCHAR), (SELECT value FROM catalog://runtime WHERE key = ''focused_pane''), ''leaf'', ''vertical''), (''pane_2_'' || CAST(epoch_ms(now()) AS VARCHAR), (SELECT value FROM catalog://runtime WHERE key = ''focused_pane''), ''leaf'', ''vertical''); UPDATE catalog://runtime SET value = (SELECT id FROM catalog://pane WHERE id LIKE ''pane_2_%'' ORDER BY id DESC LIMIT 1) WHERE key = ''focused_pane'''),
+			('sh', 'INSERT INTO catalog://pane (id, parent_id, type, direction) VALUES (''pane_1_'' || CAST(epoch_ms(now()) AS VARCHAR), (SELECT value FROM catalog://runtime WHERE key = ''focused_pane''), ''leaf'', ''horizontal''), (''pane_2_'' || CAST(epoch_ms(now()) AS VARCHAR), (SELECT value FROM catalog://runtime WHERE key = ''focused_pane''), ''leaf'', ''horizontal''); UPDATE catalog://runtime SET value = (SELECT id FROM catalog://pane WHERE id LIKE ''pane_2_%'' ORDER BY id DESC LIMIT 1) WHERE key = ''focused_pane''')
 		`);
 	}
 
 	async query(sql: string): Promise<DataFrame> {
+		const hashBefore = await this.computeHash();
+
 		const result = await new Promise<DataFrame>((resolve, reject) => {
 			this.conn.all(sql, (err, rows) => {
 				if (err) {
@@ -88,6 +144,12 @@ export class CatalogExecutor implements Executor {
 				});
 			});
 		});
+
+		const hashAfter = await this.computeHash();
+
+		if (hashBefore !== hashAfter) {
+			this.listeners.forEach(listener => listener());
+		}
 
 		return result;
 	}

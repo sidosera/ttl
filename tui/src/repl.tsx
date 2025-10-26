@@ -31,7 +31,7 @@ export const Repl: React.FC<ReplProps> = () => {
 			return;
 		}
 
-		setMessage(repl.formatResult(result));
+		// setMessage(repl.formatResult(result));
 	};
 
 	return (
