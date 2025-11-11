@@ -3,33 +3,40 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include "sampler.hpp"
+#include "buffer.hpp"
+#include "runtime.hpp"
 #include "telemetry_object.hpp"
 
 namespace bits::ttl {
 
+namespace detail {
+struct CounterImpl : public ITelemetryObject {
+  explicit CounterImpl(std::string name);
+
+  void add(double value);
+  void capture(ISink& sink) override;
+
+  [[nodiscard]] std::string_view name() const { return name_; }
+
+  std::string name_;
+  bits::MPSCBuffer<double> buffer_;
+};
+}  // namespace detail
+
 class Counter {
  public:
   explicit Counter(std::string_view name);
+  explicit Counter(std::string_view name,
+                   const std::shared_ptr<detail::Runtime>& rt);
+
   Counter& operator+=(double value);
   Counter& operator=(double value);
   void operator()(double value);
 
-  std::string_view name() const;
+  [[nodiscard]] std::string_view name() const;
 
  private:
-  struct Impl : public ITelemetryObject {
-    explicit Impl(std::string_view name);
-
-    void yield(double value);
-    std::string_view name() const { return name_; }
-    void capture(Sink& sink, const std::vector<Tag>& tags) override;
-
-    std::string name_;
-    mutable Sampler<double> sampler_;
-  };
-
-  std::shared_ptr<Impl> impl_;
+  std::shared_ptr<detail::CounterImpl> impl_;
 };
 
 }  // namespace bits::ttl

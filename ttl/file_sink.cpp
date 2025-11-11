@@ -7,37 +7,36 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include "throw_if_not.hpp"
+#include "types.hpp"
 
 namespace bits::ttl {
 
-FileSink::FileSink(std::string_view path) : fd_(-1) {
-  std::string path_str(path);
-  fd_ = open(path_str.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0644);
-  if (fd_ < 0) {
-    fprintf(stderr, "ttl: failed to open %s: %s\n", path_str.c_str(),
-            strerror(errno));
-    abort();
-  }
-}
+Base::Base(int fd) : fd_(fd) {};
 
-FileSink::~FileSink() {
+Base::~Base() {
   if (fd_ >= 0) {
-    close(fd_);
+    ::close(fd_);
   }
 }
 
-void FileSink::publish(Event&& event) {
+[[nodiscard]] int Base::fd() const {
+  return fd_;
+}
+
+void Base::publish(Event&& event) {
   if (fd_ < 0) {
     return;
   }
 
   char buf[4096];
-  char* p = buf;
+  char* p   = buf;
   char* end = buf + sizeof(buf) - 1;
 
   auto append = [&](const char* s) {
-    while (*s && p < end)
+    while (*s && p < end) {
       *p++ = *s++;
+    }
   };
 
   auto append_sv = [&](std::string_view sv) {
@@ -48,32 +47,28 @@ void FileSink::publish(Event&& event) {
 
   auto append_int = [&](int64_t val) {
     auto [ptr, ec] = std::to_chars(p, end, val);
-    if (ec == std::errc())
+    if (ec == std::errc()) {
       p = ptr;
+    }
   };
 
   auto append_double = [&](double val) {
     auto [ptr, ec] = std::to_chars(p, end, val);
-    if (ec == std::errc())
+    if (ec == std::errc()) {
       p = ptr;
+    }
   };
 
-  append("{\"name\":\"");
+  append(R"({"type":")");
+  append_sv(event.type);
+  append(R"(","name":")");
   append_sv(event.name);
-  append("\",\"ts\":");
-  append_int(event.timestamp);
+  append(R"(","ts":)");
+  append_int(event.timestamp.count());
 
-  for (size_t i = 0; i < event.tags.size(); ++i) {
-    append(",\"tag_");
-    append_sv(event.tags[i].key);
-    append("\":\"");
-    append_sv(event.tags[i].value);
-    append("\"");
-  }
-
-  for (size_t i = 0; i < event.fields.size(); ++i) {
+  for (auto& field : event.fields) {
     append(",\"");
-    append_sv(event.fields[i].key);
+    append_sv(field.key);
     append("\":");
     std::visit(
         [&](auto&& v) {
@@ -88,18 +83,27 @@ void FileSink::publish(Event&& event) {
             append("\"");
           }
         },
-        event.fields[i].value);
+        field.value);
   }
 
   append("}\n");
 
   size_t len = p - buf;
-  ssize_t n = write(fd_, buf, len);
-  if (n != static_cast<ssize_t>(len)) {
-    fprintf(stderr, "ttl: write failed: %s (wrote %zd of %zu bytes)\n",
-            strerror(errno), n > 0 ? n : 0, len);
-    abort();
-  }
+  ::write(fd_, buf, len);
+}
+
+File::File(std::string_view path)
+    : sink_(open(std::string(path).c_str(), O_WRONLY | O_APPEND | O_CREAT,
+                 0644)) {
+  const int err = errno;
+  bits::throwIfNot(sink_.fd() >= 0, "ttl: failed to open {}: {}", path,
+                   std::error_code(err, std::generic_category()).message());
+}
+
+File::~File() = default;
+
+void File::publish(Event&& event) {
+  sink_.publish(std::move(event));
 }
 
 }  // namespace bits::ttl

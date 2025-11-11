@@ -1,55 +1,68 @@
 #include "counter.hpp"
+#include <bits/algo.hpp>
 #include <chrono>
-#include "registry.hpp"
-#include "sampling_strategies.hpp"
+#include <memory>
+#include <string>
+#include "runtime.hpp"
 #include "sink.hpp"
 #include "telemetry_object.hpp"
 
+using std::chrono::steady_clock;
+
 namespace bits::ttl {
 
-Counter::Impl::Impl(std::string_view name)
-    : name_(name), sampler_(strategies::weightedReservoirSample<double>) {}
+namespace detail {
+CounterImpl::CounterImpl(std::string name) : name_(std::move(name)) {}
 
-void Counter::Impl::yield(double value) {
-  sampler_.yield(value);
+void CounterImpl::add(double value) {
+  buffer_.append(value);
 }
 
-void Counter::Impl::capture(Sink& sink, const std::vector<Tag>& tags) {
-  int64_t now_us = std::chrono::duration_cast<std::chrono::microseconds>(
-                       std::chrono::system_clock::now().time_since_epoch())
-                       .count();
+void CounterImpl::capture(ISink& sink) {
+  bits::WeightedReservoirSample<double> sampler;
+  const auto data = buffer_.acquire();
 
-  auto sample_opt = sampler_.capture(now_us);
-  if (!sample_opt) {
+  if (data.empty()) {
     return;
   }
 
-  const auto& sample = *sample_opt;
+  const auto result = sampler(data);
 
-  Event event{.name = std::string(name()),
-              .timestamp = sample.timestamp_us / 1000000,
-              .tags = tags,
-              .fields = {{"value", sample.value},
-                         {"count", static_cast<int64_t>(sample.count)}}};
+  if (result.samples.empty()) {
+    return;
+  }
 
-  sink.publish(std::move(event));
+  for (const auto& value : result.samples) {
+    Event event{
+        .type      = "metric",
+        .name      = std::string(name()),
+        .timestamp = steady_clock::now().time_since_epoch(),
+        .fields    = {{"value", value}, {"count", static_cast<int64_t>(result.original_count)}}};
+
+    sink.publish(std::move(event));
+  }
 }
+}  // namespace detail
 
 Counter::Counter(std::string_view name)
-    : impl_(detail::Registry::makeObject<Impl>(std::string(name))) {}
+    : Counter(name, detail::Runtime::instance()) {};
+
+Counter::Counter(std::string_view name,
+                 const std::shared_ptr<detail::Runtime>& rt)
+    : impl_(rt->makeObject<detail::CounterImpl>(std::string(name))) {}
 
 Counter& Counter::operator+=(double value) {
-  impl_->yield(value);
+  impl_->add(value);
   return *this;
 }
 
 Counter& Counter::operator=(double value) {
-  impl_->yield(value);
+  impl_->add(value);
   return *this;
 }
 
 void Counter::operator()(double value) {
-  impl_->yield(value);
+  impl_->add(value);
 }
 
 std::string_view Counter::name() const {

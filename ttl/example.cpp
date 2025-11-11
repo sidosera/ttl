@@ -10,7 +10,7 @@
 using namespace bits::ttl;
 
 int main() {
-  Ttl::init("file:///tmp/ttl_example.log");
+  Ttl::init("file://tmp/ttl_example.log");
 
   Counter latency_p99("demo.latency");
   Counter throughput("demo.throughput");
@@ -18,10 +18,10 @@ int main() {
   Counter queue_depth("demo.queue.depth");
   Counter error_rate("demo.error.rate");
 
-  std::cout << "Generating metrics to /tmp/ttl_example.log (Ctrl+C to stop)..."
-            << std::endl;
+  std::cout
+      << "Generating metrics to /tmp/ttl_example.log (Ctrl+C to stop)...\n";
 
-  constexpr double two_pi = 6.283185307179586;
+  constexpr double two_pi                          = 6.283185307179586;
   constexpr std::array<double, 12> latency_pattern = {
       85.0,  90.0, 95.0, 110.0, 130.0, 150.0,
       110.0, 95.0, 90.0, 85.0,  80.0,  75.0};

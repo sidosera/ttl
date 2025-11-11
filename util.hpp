@@ -11,6 +11,8 @@
 #include <cerrno>
 #include <charconv>
 #include <cstdint>
+#include <exception>
+#include <format>
 #include <optional>
 #include <string>
 #include <string_view>

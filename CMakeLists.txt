@@ -10,3 +10,7 @@ target_include_directories(
 target_link_libraries(bits INTERFACE simde)
 
 add_subdirectory(ttl)
+
+if(BUILD_TESTING)
+  add_subdirectory(tests)
+endif()

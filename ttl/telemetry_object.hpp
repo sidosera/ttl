@@ -1,16 +1,14 @@
 #pragma once
 
 #include <memory>
-#include <vector>
 
 namespace bits::ttl {
 
-class Sink;
-struct Tag;
+class ISink;
 
 struct ITelemetryObject {
-  virtual ~ITelemetryObject() = default;
-  virtual void capture(Sink& sink, const std::vector<Tag>& tags) = 0;
+  virtual ~ITelemetryObject()       = default;
+  virtual void capture(ISink& sink) = 0;
 };
 
 using ITelemetryObjectPtr = std::shared_ptr<ITelemetryObject>;

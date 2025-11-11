@@ -4,9 +4,9 @@
 
 namespace bits::ttl {
 
-class Sink {
+class ISink {
  public:
-  virtual ~Sink() = default;
+  virtual ~ISink() = default;
   virtual void publish(Event&& event) = 0;
 };
 

@@ -2,8 +2,6 @@ add_library(
   ttl
   file_sink.hpp
   file_sink.cpp
-  noop_sink.hpp
-  noop_sink.cpp
   sink.hpp
   types.hpp
   ttl.hpp
@@ -11,15 +9,14 @@ add_library(
   telemetry_object.hpp
   counter.hpp
   counter.cpp
-  registry.hpp
-  registry.cpp
-  sampler.hpp
-  sampling_strategies.hpp
+  runtime.hpp
+  runtime.cpp
+  logger.hpp
+  logger.cpp
 )
 
 target_link_libraries(
   ttl
-  PRIVATE
   PUBLIC
   bits
 )
